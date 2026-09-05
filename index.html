@@ -5,57 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>AR เครื่องซักผ้า</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧺</text></svg>" />
-
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
 
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; overflow: hidden;
-      font-family: -apple-system, "Segoe UI", "Sarabun", sans-serif; }
+    html, body { margin: 0; padding: 0; overflow: hidden; height: 100%;
+      font-family: -apple-system, "Segoe UI", "Sarabun", sans-serif; background: #000; }
 
-    /* ---------- หน้าเริ่มต้น / ตัวตรวจสอบกล้อง ---------- */
-    #startScreen {
-      position: fixed; inset: 0; z-index: 100;
-      background: #0f172a; color: #fff;
+    /* วิดีโอกล้อง (พื้นหลัง) */
+    #cam { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; background: #000; }
+
+    /* ฉาก 3D (โปร่งใส ทับวิดีโอ) */
+    a-scene { position: fixed !important; inset: 0; z-index: 1; }
+
+    /* เลเยอร์รับการลากนิ้วเพื่อหมุน (อยู่เหนือ 3D แต่ใต้ปุ่ม) */
+    #touchLayer { position: fixed; inset: 0; z-index: 5; touch-action: none; }
+
+    /* หน้าเริ่มต้น */
+    #startScreen { position: fixed; inset: 0; z-index: 100; background: #0f172a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; padding: 24px; gap: 18px;
-    }
+      text-align: center; padding: 24px; gap: 18px; }
     #startScreen h1 { font-size: 22px; margin: 0; }
     #startScreen p { font-size: 15px; opacity: .85; margin: 0; max-width: 340px; line-height: 1.6; }
-    #startBtn {
-      border: none; border-radius: 16px; padding: 16px 30px;
-      font-size: 18px; font-weight: 800; background: #38bdf8; color: #06263a;
-      cursor: pointer; box-shadow: 0 6px 20px rgba(56,189,248,.4);
-    }
+    #startBtn { border: none; border-radius: 16px; padding: 16px 30px; font-size: 18px; font-weight: 800;
+      background: #38bdf8; color: #06263a; cursor: pointer; box-shadow: 0 6px 20px rgba(56,189,248,.4); }
     #startBtn:active { transform: scale(.96); }
-    #diag {
-      font-size: 14px; line-height: 1.7; max-width: 360px;
-      background: rgba(255,255,255,.08); border-radius: 12px; padding: 14px 16px;
-      display: none;
-    }
+    #startScreen.hidden { display: none; }
+    #diag { font-size: 14px; line-height: 1.7; max-width: 360px; border-radius: 12px; padding: 14px 16px; display: none; }
     #diag.error { background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.5); display: block; }
     #diag.warn  { background: rgba(234,179,8,.16);  border: 1px solid rgba(234,179,8,.5);  display: block; }
-    #diag b { color: #fca5a5; }
     #diag .code { font-family: monospace; font-size: 12px; opacity: .8; word-break: break-all; }
-    #startScreen.hidden { display: none; }
 
-    /* ---------- คำแนะนำ marker ---------- */
-    #hint {
-      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
-      z-index: 20; background: rgba(17,24,39,.82); color: #fff;
-      padding: 10px 16px; border-radius: 999px; font-size: 14px;
-      backdrop-filter: blur(6px); transition: opacity .3s; white-space: nowrap;
-    }
-    #hint.hidden { opacity: 0; pointer-events: none; }
+    /* ปุ่มซูม + คำแนะนำ มุมขวาบน */
+    #topctl { position: fixed; top: 14px; right: 12px; z-index: 20; display: none;
+      flex-direction: column; gap: 10px; align-items: center; }
+    .zoom { width: 50px; height: 50px; border: none; border-radius: 50%; font-size: 24px; font-weight: 800;
+      background: rgba(17,24,39,.7); color: #fff; cursor: pointer; backdrop-filter: blur(6px); }
+    .zoom:active { transform: scale(.9); }
+    #dragHint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 20;
+      background: rgba(17,24,39,.8); color: #fff; padding: 8px 14px; border-radius: 999px; font-size: 13px;
+      backdrop-filter: blur(6px); display: none; transition: opacity .4s; }
 
-    /* ---------- แผงควบคุม ---------- */
-    #panel {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    /* แผงควบคุม RPM */
+    #panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
       background: linear-gradient(180deg, rgba(17,24,39,0) 0%, rgba(17,24,39,.92) 26%);
-      padding: 46px 14px 20px; color: #fff;
-      display: flex; flex-direction: column; gap: 14px; align-items: center;
-    }
+      padding: 46px 14px 20px; color: #fff; display: none; flex-direction: column; gap: 14px; align-items: center; }
     #rpmReadout { font-size: 32px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
     #rpmReadout small { font-size: 13px; font-weight: 500; opacity: .7; }
     #rpmReadout .dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; }
@@ -76,21 +70,29 @@
 </head>
 <body>
 
-  <!-- ================= หน้าเริ่มต้น + ตรวจสอบกล้อง ================= -->
+  <!-- วิดีโอกล้องพื้นหลัง -->
+  <video id="cam" autoplay playsinline muted></video>
+
+  <!-- เลเยอร์ลากนิ้วหมุน -->
+  <div id="touchLayer" style="display:none;"></div>
+
+  <!-- ปุ่มซูม -->
+  <div id="topctl">
+    <button class="zoom" id="zoomIn">+</button>
+    <button class="zoom" id="zoomOut">−</button>
+  </div>
+  <div id="dragHint">👆 ลากนิ้วเพื่อหมุนดู • ปุ่ม +/− ซูม</div>
+
+  <!-- หน้าเริ่มต้น -->
   <div id="startScreen">
     <h1>🧺 AR เครื่องซักผ้า</h1>
-    <p>แตะปุ่มด้านล่างเพื่อเปิดกล้อง แล้วเล็งไปที่ Hiro marker</p>
+    <p>แตะเพื่อเปิดกล้อง แล้วเครื่องซักผ้าจะปรากฏขึ้นทันที<br>(ลากนิ้วหมุนดู และใช้ปุ่ม +/− ปรับขนาดได้)</p>
     <button id="startBtn">📷 แตะเพื่อเปิดกล้อง</button>
     <div id="diag"></div>
   </div>
 
-  <div id="hint">🔍 กำลังค้นหา marker... เล็งกล้องให้ marker อยู่กลางเฟรม</div>
-
-  <!-- ================= AR SCENE (สร้างหลังได้สิทธิ์กล้อง) ================= -->
-  <div id="sceneHolder"></div>
-
-  <!-- ================= แผงควบคุม ================= -->
-  <div id="panel" style="display:none;">
+  <!-- แผงควบคุม -->
+  <div id="panel">
     <div id="rpmReadout"><span class="dot"></span><span id="rpmVal">0</span><small>RPM</small></div>
     <div id="modeLabel">ปิดเครื่อง</div>
     <div id="fine">
@@ -108,47 +110,48 @@
     </div>
   </div>
 
-  <!-- แม่แบบ scene AR (จะถูกใส่เข้าไปหลังเปิดกล้องสำเร็จ) -->
+  <!-- ฉาก 3D (ใส่หลังเปิดกล้อง) -->
   <template id="sceneTemplate">
-    <a-scene embedded vr-mode-ui="enabled: false"
-      renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true;"
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 60; patternRatio: 0.5;">
-      <a-marker id="marker" preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
-        <a-entity light="type: ambient; intensity: 0.9"></a-entity>
-        <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
-        <a-entity id="machine" position="0 0 0">
-          <a-box position="0 0.55 0" width="1.05" height="1.1" depth="0.95" color="#f4f6f8" roughness="0.55" metalness="0.15"></a-box>
-          <a-box position="0 1.06 -0.1" width="1.02" height="0.16" depth="0.72" color="#cfd6dd" roughness="0.5"></a-box>
-          <a-cylinder position="-0.32 1.06 0.28" radius="0.07" height="0.05" rotation="90 0 0" color="#334155"></a-cylinder>
-          <a-box position="0.15 1.06 0.28" width="0.4" height="0.045" depth="0.09" color="#1e293b"></a-box>
-          <a-box id="ledPanel" position="0.32 1.06 0.28" width="0.16" height="0.05" depth="0.09" color="#0ea5e9" emissive="#0ea5e9" emissive-intensity="0.6"></a-box>
-          <a-torus position="0 0.58 0.475" radius="0.31" radius-tubular="0.045" color="#94a3b8" metalness="0.5" roughness="0.35" segments-tubular="40" segments-radial="18"></a-torus>
-          <a-circle position="0 0.58 0.18" radius="0.29" color="#0f172a"></a-circle>
-          <a-entity id="drum" spin="rpm: 0" position="0 0.58 0.30">
-            <a-torus radius="0.255" radius-tubular="0.02" color="#64748b" metalness="0.6" roughness="0.3" segments-tubular="30"></a-torus>
-            <a-cylinder position="0 0.2 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
-            <a-cylinder position="0.17 0.1 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
-            <a-cylinder position="-0.17 -0.1 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
-            <a-cylinder position="0 -0.2 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
-            <a-box position="0 0.22 0" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
-            <a-box position="0.19 -0.11 0" rotation="0 0 -120" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
-            <a-box position="-0.19 -0.11 0" rotation="0 0 120" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
-            <a-sphere position="0.09 0.08 0.02" radius="0.075" color="#ef4444" roughness="1"></a-sphere>
-            <a-sphere position="-0.11 0.03 0.01" radius="0.07" color="#3b82f6" roughness="1"></a-sphere>
-            <a-sphere position="0.03 -0.12 0.02" radius="0.08" color="#eab308" roughness="1"></a-sphere>
-            <a-sphere position="-0.05 -0.02 0.03" radius="0.065" color="#22c55e" roughness="1"></a-sphere>
-            <a-sphere position="0.13 -0.05 0.0" radius="0.06" color="#a855f7" roughness="1"></a-sphere>
-          </a-entity>
-          <a-circle position="0 0.58 0.49" radius="0.265" color="#bae6fd" opacity="0.28" transparent="true" side="double"></a-circle>
-          <a-box position="0 0.03 0" width="1.05" height="0.06" depth="0.95" color="#94a3b8"></a-box>
+    <a-scene embedded vr-mode-ui="enabled: false" renderer="alpha: true; antialias: true; logarithmicDepthBuffer: true;">
+      <a-entity light="type: ambient; intensity: 0.85"></a-entity>
+      <a-entity light="type: directional; intensity: 0.7" position="2 4 3"></a-entity>
+      <a-entity light="type: directional; intensity: 0.3" position="-2 1 -2"></a-entity>
+
+      <!-- เครื่องซักผ้า: วางไว้ตรงหน้ากล้องให้เห็นพอดี -->
+      <a-entity id="machine" position="0 -0.75 -2.8" rotation="0 -22 0" scale="1 1 1">
+        <a-box position="0 0.55 0" width="1.05" height="1.1" depth="0.95" color="#f4f6f8" roughness="0.55" metalness="0.15"></a-box>
+        <a-box position="0 1.06 -0.1" width="1.02" height="0.16" depth="0.72" color="#cfd6dd" roughness="0.5"></a-box>
+        <a-cylinder position="-0.32 1.06 0.28" radius="0.07" height="0.05" rotation="90 0 0" color="#334155"></a-cylinder>
+        <a-box position="0.15 1.06 0.28" width="0.4" height="0.045" depth="0.09" color="#1e293b"></a-box>
+        <a-box id="ledPanel" position="0.32 1.06 0.28" width="0.16" height="0.05" depth="0.09" color="#0ea5e9" emissive="#0ea5e9" emissive-intensity="0.6"></a-box>
+        <a-torus position="0 0.58 0.475" radius="0.31" radius-tubular="0.045" color="#94a3b8" metalness="0.5" roughness="0.35" segments-tubular="40" segments-radial="18"></a-torus>
+        <a-circle position="0 0.58 0.18" radius="0.29" color="#0f172a"></a-circle>
+        <a-entity id="drum" spin="rpm: 0" position="0 0.58 0.30">
+          <a-torus radius="0.255" radius-tubular="0.02" color="#64748b" metalness="0.6" roughness="0.3" segments-tubular="30"></a-torus>
+          <a-cylinder position="0 0.2 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
+          <a-cylinder position="0.17 0.1 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
+          <a-cylinder position="-0.17 -0.1 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
+          <a-cylinder position="0 -0.2 0" radius="0.018" height="0.02" rotation="90 0 0" color="#334155"></a-cylinder>
+          <a-box position="0 0.22 0" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
+          <a-box position="0.19 -0.11 0" rotation="0 0 -120" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
+          <a-box position="-0.19 -0.11 0" rotation="0 0 120" width="0.1" height="0.05" depth="0.06" color="#475569"></a-box>
+          <a-sphere position="0.09 0.08 0.02" radius="0.075" color="#ef4444" roughness="1"></a-sphere>
+          <a-sphere position="-0.11 0.03 0.01" radius="0.07" color="#3b82f6" roughness="1"></a-sphere>
+          <a-sphere position="0.03 -0.12 0.02" radius="0.08" color="#eab308" roughness="1"></a-sphere>
+          <a-sphere position="-0.05 -0.02 0.03" radius="0.065" color="#22c55e" roughness="1"></a-sphere>
+          <a-sphere position="0.13 -0.05 0.0" radius="0.06" color="#a855f7" roughness="1"></a-sphere>
         </a-entity>
-      </a-marker>
-      <a-entity camera></a-entity>
+        <a-circle position="0 0.58 0.49" radius="0.265" color="#bae6fd" opacity="0.28" transparent="true" side="double"></a-circle>
+        <a-box position="0 0.03 0" width="1.05" height="0.06" depth="0.95" color="#94a3b8"></a-box>
+      </a-entity>
+
+      <!-- กล้องคงที่ (ปิด look-controls ให้เครื่องอยู่กลางจอเสมอ) -->
+      <a-camera position="0 0 0" look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>
     </a-scene>
   </template>
 
   <script>
-    // ---------- คอมโพเนนต์ A-Frame ----------
+    // ---------- คอมโพเนนต์ ----------
     AFRAME.registerComponent('spin', {
       schema: { rpm: { default: 0 } },
       tick: function (t, dt) {
@@ -159,6 +162,7 @@
     AFRAME.registerComponent('machine-vibrate', {
       init: function () { this.base = this.el.object3D.position.clone(); this.rpm = 0; },
       setRpm: function (r) { this.rpm = r; },
+      updateBase: function () { this.base = this.el.object3D.position.clone(); },
       tick: function () {
         var p = this.el.object3D.position, b = this.base;
         if (this.rpm > 400) {
@@ -168,98 +172,107 @@
       }
     });
 
-    // ---------- ตรวจสอบ + ขอสิทธิ์กล้อง ----------
     var startBtn = document.getElementById('startBtn');
     var diag = document.getElementById('diag');
     var startScreen = document.getElementById('startScreen');
+    var camVideo = document.getElementById('cam');
 
-    // เตือนล่วงหน้าถ้าเปิดในแอป in-app (Line/FB/IG) ที่บล็อกกล้อง
     (function () {
       var ua = navigator.userAgent || '';
       if (/Line|FBAN|FBAV|Instagram|Messenger/i.test(ua)) {
         diag.className = 'warn';
-        diag.innerHTML = '⚠️ คุณกำลังเปิดในแอป (Line/Facebook/IG) ซึ่งมัก<b>บล็อกกล้อง</b><br>' +
-          'แตะเมนู ⋯ มุมขวา แล้วเลือก "เปิดในเบราว์เซอร์" / "Open in Safari/Chrome"';
+        diag.innerHTML = '⚠️ คุณกำลังเปิดในแอป (Line/Facebook/IG) ซึ่งมัก<b>บล็อกกล้อง</b><br>แตะเมนู ⋯ มุมขวา แล้วเลือก "เปิดในเบราว์เซอร์"';
+      }
+      if (typeof AFRAME === 'undefined') {
+        diag.className = 'error';
+        diag.innerHTML = '<b>❌ โหลดไลบรารี 3D ไม่สำเร็จ</b><br>เช็คอินเทอร์เน็ตแล้วรีเฟรชใหม่';
+        diag.style.display = 'block';
+        startBtn.disabled = true; startBtn.style.opacity = '0.5';
       }
     })();
 
     async function startCamera() {
-      diag.className = '';
-      diag.style.display = 'block';
-      diag.innerHTML = 'กำลังขอสิทธิ์กล้อง...';
-
+      diag.className = ''; diag.style.display = 'block'; diag.innerHTML = 'กำลังขอสิทธิ์กล้อง...';
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         diag.className = 'error';
-        diag.innerHTML = '<b>❌ เบราว์เซอร์เปิดกล้องไม่ได้</b><br>' +
-          'หน้านี้อาจไม่ใช่ HTTPS หรือเปิดในแอปที่บล็อกกล้อง<br>' +
-          '→ เปิดลิงก์นี้ใน Safari (iPhone) หรือ Chrome (Android) โดยตรง';
+        diag.innerHTML = '<b>❌ เบราว์เซอร์เปิดกล้องไม่ได้</b><br>ต้องเป็น HTTPS และเปิดใน Safari/Chrome (ไม่ใช่ในแอป Line/FB)';
         return;
       }
-
       try {
-        // ขอสิทธิ์ด้วย gesture ของผู้ใช้ (สำคัญมากบน iOS)
         var stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } }, audio: false
         });
-        stream.getTracks().forEach(function (t) { t.stop() }); // ปล่อยให้ AR.js เปิดเอง
-        launchAR();
+        camVideo.srcObject = stream;
+        await camVideo.play().catch(function(){});
+        launch();
       } catch (e) {
         diag.className = 'error';
         var hint = '';
         if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')
-          hint = 'คุณปฏิเสธสิทธิ์กล้อง หรือแอปบล็อกไว้<br>→ แตะไอคอน 🔒/aA ข้าง URL แล้วเปลี่ยน "กล้อง" เป็น <b>อนุญาต</b> แล้วรีเฟรช<br>→ หรือเปิดใน Safari/Chrome ตรงๆ (อย่าเปิดในแอป Line/FB)';
-        else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError')
-          hint = 'ไม่พบกล้องบนอุปกรณ์นี้';
-        else if (e.name === 'NotReadableError' || e.name === 'TrackStartError')
-          hint = 'กล้องถูกแอปอื่นใช้อยู่ → ปิดแอปกล้อง/วิดีโอคอลอื่น แล้วลองใหม่';
-        else if (e.name === 'SecurityError')
-          hint = 'ต้องเปิดผ่าน HTTPS เท่านั้น';
-        else if (e.name === 'OverconstrainedError')
-          hint = 'กล้องหลังไม่พร้อม กำลังลองกล้องหน้า...';
-        diag.innerHTML = '<b>❌ เปิดกล้องไม่ได้</b><br>' + hint +
-          '<br><span class="code">' + e.name + ': ' + (e.message || '') + '</span>';
-
-        // ถ้ากล้องหลังมีปัญหา ลองกล้องไหนก็ได้
-        if (e.name === 'OverconstrainedError') {
-          try {
-            var s2 = await navigator.mediaDevices.getUserMedia({ video: true });
-            s2.getTracks().forEach(function (t) { t.stop() });
-            launchAR();
-          } catch (e2) { /* แสดง error เดิม */ }
-        }
+          hint = 'คุณปฏิเสธสิทธิ์กล้อง → แตะไอคอน 🔒/aA ข้าง URL เปลี่ยน "กล้อง" เป็นอนุญาต แล้วรีเฟรช (อย่าเปิดในแอป Line/FB)';
+        else if (e.name === 'NotFoundError') hint = 'ไม่พบกล้องบนอุปกรณ์';
+        else if (e.name === 'NotReadableError') hint = 'กล้องถูกแอปอื่นใช้อยู่ → ปิดแอปอื่นแล้วลองใหม่';
+        else if (e.name === 'SecurityError') hint = 'ต้องเปิดผ่าน HTTPS';
+        diag.innerHTML = '<b>❌ เปิดกล้องไม่ได้</b><br>' + hint + '<br><span class="code">' + e.name + ': ' + (e.message || '') + '</span>';
       }
     }
 
-    function launchAR() {
-      // ใส่ scene AR เข้า DOM (ตอนนี้มีสิทธิ์กล้องแล้ว)
-      var tpl = document.getElementById('sceneTemplate');
-      document.getElementById('sceneHolder').appendChild(tpl.content.cloneNode(true));
+    function launch() {
+      document.getElementById('sceneTemplate');
+      document.body.insertBefore(
+        document.getElementById('sceneTemplate').content.cloneNode(true),
+        document.getElementById('touchLayer')
+      );
       startScreen.classList.add('hidden');
       document.getElementById('panel').style.display = 'flex';
-      wireControls();
-    }
+      document.getElementById('topctl').style.display = 'flex';
+      document.getElementById('touchLayer').style.display = 'block';
 
-    // เช็คว่าไลบรารี A-Frame/AR.js โหลดสำเร็จหรือไม่
-    if (typeof AFRAME === 'undefined') {
-      diag.className = 'error';
-      diag.innerHTML = '<b>❌ โหลดไลบรารี 3D ไม่สำเร็จ</b><br>' +
-        'อาจเป็นเพราะอินเทอร์เน็ตช้า/หลุด หรือ CDN ถูกบล็อก<br>' +
-        '→ เช็คเน็ต แล้วรีเฟรชหน้าใหม่ (ครั้งแรกต้องต่อเน็ตเพื่อโหลดไลบรารี)';
-      diag.style.display = 'block';
-      startBtn.disabled = true;
-      startBtn.style.opacity = '0.5';
-    } else {
-      startBtn.addEventListener('click', startCamera);
-    }
+      var dh = document.getElementById('dragHint');
+      dh.style.display = 'block';
+      setTimeout(function(){ dh.style.opacity = '0'; }, 3500);
 
-    // ---------- ปุ่มควบคุมความเร็ว ----------
-    function wireControls() {
-      var MAX = 1600, STEP = 50;
+      // รอ scene พร้อมแล้วค่อยผูกปุ่ม
       var scene = document.querySelector('a-scene');
-      var drum = document.querySelector('#drum');
-      var machine = document.querySelector('#machine');
-      machine.setAttribute('machine-vibrate', '');
+      if (scene.hasLoaded) wireAll(); else scene.addEventListener('loaded', wireAll);
+    }
 
+    startBtn.addEventListener('click', startCamera);
+
+    function wireAll() {
+      var machineEl = document.querySelector('#machine');
+      machineEl.setAttribute('machine-vibrate', '');
+
+      // ---------- ลากนิ้วหมุน + ซูม ----------
+      var rotY = -22, dist = -2.8, scale = 1;
+      var dragging = false, lastX = 0, lastY = 0, rotX = 0;
+
+      function applyTransform() {
+        machineEl.setAttribute('rotation', rotX + ' ' + rotY + ' 0');
+        machineEl.setAttribute('position', '0 ' + (-0.75) + ' ' + dist);
+        machineEl.setAttribute('scale', scale + ' ' + scale + ' ' + scale);
+        var mv = machineEl.components['machine-vibrate'];
+        if (mv) mv.updateBase();
+      }
+
+      var layer = document.getElementById('touchLayer');
+      layer.addEventListener('pointerdown', function (e) { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+      window.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        rotY += (e.clientX - lastX) * 0.5;
+        rotX += (e.clientY - lastY) * 0.3;
+        rotX = Math.max(-40, Math.min(40, rotX));
+        lastX = e.clientX; lastY = e.clientY;
+        applyTransform();
+      });
+      window.addEventListener('pointerup', function () { dragging = false; });
+
+      document.getElementById('zoomIn').addEventListener('click', function () { scale = Math.min(2.5, scale + 0.2); applyTransform(); });
+      document.getElementById('zoomOut').addEventListener('click', function () { scale = Math.max(0.4, scale - 0.2); applyTransform(); });
+
+      // ---------- ปุ่มความเร็ว RPM ----------
+      var MAX = 1600, STEP = 50;
+      var drum = document.querySelector('#drum');
       var rpmVal = document.getElementById('rpmVal');
       var modeLabel = document.getElementById('modeLabel');
       var presets = document.querySelectorAll('.preset');
@@ -271,7 +284,7 @@
       function apply(rpm, modeText, fromAuto) {
         rpm = Math.max(0, Math.min(MAX, Math.round(rpm))); currentRpm = rpm;
         drum.setAttribute('spin', 'rpm', rpm);
-        if (machine.components['machine-vibrate']) machine.components['machine-vibrate'].setRpm(rpm);
+        var mv = machineEl.components['machine-vibrate']; if (mv) mv.setRpm(rpm);
         rpmVal.textContent = rpm; modeLabel.textContent = modeText || modeFromRpm(rpm);
         var c = rpm===0?'#334155':rpm<200?'#0ea5e9':rpm<800?'#eab308':'#ef4444';
         led.setAttribute('color', c); led.setAttribute('emissive', c);
@@ -301,20 +314,6 @@
           apply(cycle[i].rpm, cycle[i].mode, true);
           autoTimer=setTimeout(function(){ i++; step(); }, cycle[i].ms);
         })();
-      });
-
-      // marker found/lost
-      var marker = document.querySelector('#marker');
-      var hint = document.getElementById('hint');
-      marker.addEventListener('markerFound', function(){
-        hint.style.background = 'rgba(34,197,94,.9)';
-        hint.textContent = '✅ เจอ marker แล้ว!';
-        setTimeout(function(){ hint.classList.add('hidden'); }, 1200);
-      });
-      marker.addEventListener('markerLost', function(){
-        hint.classList.remove('hidden');
-        hint.style.background = 'rgba(17,24,39,.82)';
-        hint.textContent = '🔍 marker หลุด... เล็งกล้องกลับไปที่ marker';
       });
     }
   </script>
