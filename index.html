@@ -84,7 +84,7 @@
     <div id="diag"></div>
   </div>
 
-  <div id="hint">📷 เล็งกล้องไปที่ marker เพื่อแสดงเครื่องซักผ้า</div>
+  <div id="hint">🔍 กำลังค้นหา marker... เล็งกล้องให้ marker อยู่กลางเฟรม</div>
 
   <!-- ================= AR SCENE (สร้างหลังได้สิทธิ์กล้อง) ================= -->
   <div id="sceneHolder"></div>
@@ -112,8 +112,10 @@
   <template id="sceneTemplate">
     <a-scene embedded vr-mode-ui="enabled: false"
       renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true;"
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
-      <a-marker id="marker" preset="hiro">
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 60; patternRatio: 0.5;">
+      <a-marker id="marker" preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+        <a-entity light="type: ambient; intensity: 0.9"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
         <a-entity id="machine" position="0 0 0">
           <a-box position="0 0.55 0" width="1.05" height="1.1" depth="0.95" color="#f4f6f8" roughness="0.55" metalness="0.15"></a-box>
           <a-box position="0 1.06 -0.1" width="1.02" height="0.16" depth="0.72" color="#cfd6dd" roughness="0.5"></a-box>
@@ -303,8 +305,17 @@
 
       // marker found/lost
       var marker = document.querySelector('#marker');
-      marker.addEventListener('markerFound', function(){ document.getElementById('hint').classList.add('hidden'); });
-      marker.addEventListener('markerLost',  function(){ document.getElementById('hint').classList.remove('hidden'); });
+      var hint = document.getElementById('hint');
+      marker.addEventListener('markerFound', function(){
+        hint.style.background = 'rgba(34,197,94,.9)';
+        hint.textContent = '✅ เจอ marker แล้ว!';
+        setTimeout(function(){ hint.classList.add('hidden'); }, 1200);
+      });
+      marker.addEventListener('markerLost', function(){
+        hint.classList.remove('hidden');
+        hint.style.background = 'rgba(17,24,39,.82)';
+        hint.textContent = '🔍 marker หลุด... เล็งกล้องกลับไปที่ marker';
+      });
     }
   </script>
 </body>
